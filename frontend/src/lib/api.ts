@@ -41,6 +41,17 @@ export async function uploadFile(file: File) {
   return res.json() as Promise<FileLookup>;
 }
 
+// Resolves either way: the opening screen only waits on this, it never blocks the app
+// if the backend is down (lookups then show their own error).
+export async function pingBackend(timeoutMs = 8000): Promise<boolean> {
+  try {
+    const res = await fetch(`${BASE}/api/health`, { signal: AbortSignal.timeout(timeoutMs) });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
 export function fetchHistory(limit = 30) {
   return get<HistoryItem[]>(`/api/history?limit=${limit}`);
 }

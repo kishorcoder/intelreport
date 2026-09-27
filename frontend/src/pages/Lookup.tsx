@@ -5,6 +5,7 @@ import { lookupIp, lookupUrl, lookupHash, uploadFile } from '../lib/api';
 import type { FileLookup, HashLookupResult, IPLookup, UrlLookup } from '../lib/types';
 import { GlassCard } from '../components/GlassCard';
 import { IpResultCard, UrlResultCard, FileResultCard } from '../components/ResultCard';
+import { ShieldLoader } from '../components/ShieldLoader';
 
 const IPV4_RE = /^(\d{1,3}\.){3}\d{1,3}$/;
 const IPV6_RE = /^[0-9a-fA-F:]+:[0-9a-fA-F:]+$/;
@@ -22,9 +23,6 @@ function classify(input: string): 'ip' | 'hash' | 'url' {
   if (SHA256_RE.test(trimmed)) return 'hash';
   return 'url';
 }
-
-const SHIELD_MASK =
-  "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z'/%3E%3C/svg%3E\")";
 
 const LAST_RESULT_KEY = 'intel:lastResult';
 
@@ -197,43 +195,10 @@ export function Lookup() {
         </div>
       </div>
 
-      {loading && (
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 14, minHeight: '50vh' }}>
-          <div style={{ position: 'relative', width: 160, height: 160 }}>
-            <div
-              style={{
-                position: 'absolute', inset: 0,
-                background: 'rgba(255,255,255,0.1)',
-                WebkitMaskImage: SHIELD_MASK,
-                maskImage: SHIELD_MASK,
-                WebkitMaskSize: 'contain',
-                maskSize: 'contain',
-                WebkitMaskRepeat: 'no-repeat',
-                maskRepeat: 'no-repeat',
-                WebkitMaskPosition: 'center',
-                maskPosition: 'center',
-              }}
-            />
-            <div
-              className="shield-loader-fill"
-              style={{
-                position: 'absolute', inset: 0,
-                WebkitMaskImage: SHIELD_MASK,
-                maskImage: SHIELD_MASK,
-                WebkitMaskSize: 'contain',
-                maskSize: 'contain',
-                WebkitMaskRepeat: 'no-repeat',
-                maskRepeat: 'no-repeat',
-                WebkitMaskPosition: 'center',
-                maskPosition: 'center',
-              }}
-            />
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-dim)', fontSize: 13 }}>
-            <Loader2 size={14} className="spin" /> Querying live sources...
-          </div>
-        </div>
-      )}
+      {loading && <ShieldLoader />}
+
+      {/* Nothing searched yet: keep the shield scanning as the idle state */}
+      {!loading && !result && <ShieldLoader label="Ready to scan an IP, domain, or SHA256 hash" cyberLabel />}
 
       {error && (
         <GlassCard style={{ borderColor: 'rgba(238,27,36,0.4)', color: 'var(--risk-high)', fontSize: 13 }}>
