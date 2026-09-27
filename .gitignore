@@ -21,3 +21,4 @@ frontend/dist
 
 # Phone server secrets (Cloudflare tunnel token, CORS origins)
 backend/mobile/.env
+*.log

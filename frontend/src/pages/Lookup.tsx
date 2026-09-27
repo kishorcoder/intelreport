@@ -154,7 +154,7 @@ export function Lookup() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && runLookup(input)}
-            placeholder="Spotlight-style search — IP, domain, or SHA256 hash"
+            placeholder="Search an IP, domain, or SHA256 hash"
             style={{
               flex: 1, background: 'transparent', border: 'none',
               borderRadius: 12, padding: '11px 4px', fontSize: 16.5, outline: 'none',
