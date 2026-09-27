@@ -1,0 +1,14 @@
+# Android phone (Termux) install. Same pins as requirements.txt, except:
+# - plain uvicorn: the [standard] extras (uvloop, httptools, watchfiles) have no Termux
+#   package and often fail to compile on Android
+# - no cryptography / greenlet pins: setup-termux.sh installs Termux's prebuilt packages and
+#   the venv reuses them via --system-site-packages
+fastapi==0.139.2
+uvicorn==0.51.0
+sqlalchemy==2.0.51
+pydantic==2.13.4
+httpx==0.28.1
+pefile==2024.8.26
+python-multipart==0.0.20
+tldextract==5.3.2
+slowapi==0.1.10

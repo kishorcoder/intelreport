@@ -69,6 +69,48 @@ The frontend expects the API at `http://localhost:8200` by default — override 
 `VITE_API_BASE` for a different backend URL, and set `CORS_ALLOWED_ORIGINS` on the backend
 (comma-separated) when deploying so it isn't wide open to any origin.
 
+## Running the backend on an Android phone (Termux)
+
+The phone acts as the API server; the frontend can stay wherever it's hosted.
+
+1. Install **Termux** and **Termux:Boot** from F-Droid (the Play Store build of Termux is
+   outdated). Open Termux:Boot once so Android allows it to run at boot.
+2. In Android settings, set Termux's battery usage to **Unrestricted**, otherwise Android kills
+   the server in the background.
+3. In Termux, get the code and run the one-time setup (compiling `pydantic-core` takes about
+   10–20 minutes on a phone):
+
+   ```bash
+   pkg install -y git
+   git clone https://github.com/kishorcoder/intelreport.git
+   cd intelreport/backend
+   bash mobile/setup-termux.sh
+   ```
+
+4. Edit `backend/mobile/.env` (created from `mobile/.env.example`), then start the API:
+
+   ```bash
+   ./mobile/start.sh
+   ```
+
+5. Reach it from other devices:
+   - **Same Wi-Fi:** `http://<phone-ip>:8200` (find the IP with `ifconfig` in Termux).
+   - **From the internet:** run `./mobile/tunnel.sh` in a second Termux session. Without a
+     token it prints a temporary `https://*.trycloudflare.com` URL that changes on every
+     restart. For a fixed URL such as `https://api.intelreport.in`, create a tunnel in the
+     Cloudflare Zero Trust dashboard pointing to `http://localhost:8200` and put its token in
+     `CLOUDFLARE_TUNNEL_TOKEN`.
+
+6. Point the frontend at the phone: build it with `VITE_API_BASE=<phone or tunnel URL>`, and
+   set `CORS_ALLOWED_ORIGINS` in `mobile/.env` to the frontend's origin.
+
+After a reboot, Termux:Boot starts the API automatically, plus the tunnel when a
+`CLOUDFLARE_TUNNEL_TOKEN` is set. Logs go to `~/intel-backend.log` and `~/intel-tunnel.log`.
+
+The phone install uses `requirements-mobile.txt`: plain `uvicorn` instead of
+`uvicorn[standard]`, plus Termux's prebuilt `cryptography`. If `cryptography` is missing, file
+analysis still reports whether a file is signed, but not who signed it.
+
 ## Security notes
 
 - Every lookup endpoint is rate-limited per client IP.

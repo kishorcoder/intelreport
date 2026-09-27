@@ -4,9 +4,15 @@ from collections import Counter
 from datetime import datetime, timezone
 
 import pefile
-from cryptography import x509
-from cryptography.hazmat.primitives.serialization import pkcs7
 from sqlalchemy.orm import Session
+
+# Optional: phone (Termux) installs may lack a cryptography build. Without it a signed PE is
+# still reported as signed; only the signer's name can't be extracted.
+try:
+    from cryptography import x509
+    from cryptography.hazmat.primitives.serialization import pkcs7
+except ImportError:
+    x509 = pkcs7 = None
 
 import models
 
@@ -77,6 +83,8 @@ def _extract_signature(data: bytes, pe: pefile.PE) -> tuple[bool, str | None]:
         return False, None
     # WIN_CERTIFICATE: 8-byte header (length, revision, cert type) then a DER PKCS#7 SignedData blob.
     cert_blob = data[sec_dir.VirtualAddress + 8: sec_dir.VirtualAddress + sec_dir.Size]
+    if pkcs7 is None:
+        return True, None
     try:
         certs = pkcs7.load_der_pkcs7_certificates(cert_blob)
     except Exception:
