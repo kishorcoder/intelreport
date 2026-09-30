@@ -32,10 +32,28 @@ A threat-intelligence lookup tool for IPs, domains/URLs, and file hashes — bui
 
 ### Data sources (all free, no API key required)
 
-- [FireHOL](https://iplists.firehol.org/) IP blocklists (levels 1–3, anonymous proxies)
-- [Tor Project](https://check.torproject.org/torbulkexitlist) exit node list
-- [abuse.ch](https://abuse.ch/) Feodo Tracker (botnet C2) and URLhaus (malicious URLs)
-- [X4BNet](https://github.com/X4BNet/lists_vpn) VPN IP ranges
+Every vendor is checked separately and listed in the Security Checks panel, clean or flagged.
+
+**IP reputation (14 vendors)**
+
+- [Spamhaus DROP](https://www.spamhaus.org/drop/) — hijacked / criminal netblocks
+- [DShield (SANS ISC)](https://isc.sans.edu/) — top attacking subnets
+- [Emerging Threats](https://rules.emergingthreats.net/) — compromised hosts
+- [CINS Army](https://cinsscore.com/), [Blocklist.de](https://www.blocklist.de/), [GreenSnow](https://greensnow.co/),
+  [Binary Defense](https://www.binarydefense.com/), [BruteForceBlocker](https://danger.rulez.sk/) — attackers, scanners, brute force
+- [abuse.ch](https://abuse.ch/) Feodo Tracker (botnet C2) and ThreatFox (malware infrastructure, with the malware name)
+- [Botvrij.eu](https://www.botvrij.eu/) — OSINT indicators
+- [Tor Project](https://check.torproject.org/torbulkexitlist) exit nodes, [FireHOL](https://iplists.firehol.org/) anonymous
+  proxies and [X4BNet](https://github.com/X4BNet/lists_vpn) VPN ranges — for the Tor, Proxy and VPN badges
+
+**URLs and domains (5 more vendors, plus the 14 above for the host IP)**
+
+- [abuse.ch](https://abuse.ch/) URLhaus (malware URLs and domains) and ThreatFox (malware domains)
+- [OpenPhish](https://openphish.com/) — live phishing URLs
+- [CERT Polska](https://cert.pl/) — phishing and fraud domains
+
+**Details**
+
 - [ip-api.com](https://ip-api.com/) geolocation
 - [RDAP](https://rdap.org/) for IP network and domain registration data
 - Raw WHOIS (RFC 3912, port 43) as a fallback for registries without RDAP support
@@ -55,6 +73,7 @@ cd backend
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 uvicorn main:app --reload --port 8200
+python -m unittest discover -s tests   # feed parser and vendor-check tests
 ```
 
 ### Frontend

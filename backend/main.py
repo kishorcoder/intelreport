@@ -64,7 +64,7 @@ app.include_router(history.router)
 @app.on_event("startup")
 async def load_blocklists():
     def _load():
-        logger.info("Loading threat-intel blocklists (FireHOL, PhishTank)...")
+        logger.info("Loading threat-intel vendor feeds...")
         registry.refresh_all()
         logger.info("Blocklists loaded: %s", registry.stats)
 

@@ -27,22 +27,27 @@ const SIZE = 254; // px
 const STROKE = 0.32 * (150 / SIZE);
 const GLOW_BLUR = 0.55 * (150 / SIZE);
 
+// How much thicker than the border the streak gets at its white-hot centre; it tapers
+// back to border width at the tips.
+const STREAK_THICKNESS = 2.2;
+
 // Stacked segments centred on the same moving point: a blurred glow, then many thin
 // translucent red segments of shrinking length (their overlap builds a smooth fade
-// toward the centre), topped by a short white-hot core — the same falloff as the
-// progress-line streak. Lengths are fractions of the route.
+// toward the centre, and their growing width a taper), topped by a short white-hot
+// core — the same falloff as the progress-line streak. Lengths are fractions of the
+// route.
 const TAIL_STEPS = 12;
 const STREAK_LAYERS = [
-  { len: 0.22, color: RED, width: STROKE * 2.4, opacity: 0.4, blur: true },
+  { len: 0.22, color: RED, width: STROKE * STREAK_THICKNESS * 2, opacity: 0.4, blur: true },
   ...Array.from({ length: TAIL_STEPS }, (_, i) => ({
     len: 0.025 + 0.33 * (1 - i / TAIL_STEPS) ** 1.4,
     color: i < TAIL_STEPS * 0.6 ? RED : RED_SOFT,
-    width: STROKE,
+    width: STROKE * (1 + (STREAK_THICKNESS - 1) * (i / (TAIL_STEPS - 1))),
     opacity: 0.2,
     blur: false,
   })),
-  { len: 0.045, color: '#ffc2c4', width: STROKE, opacity: 0.9, blur: false },
-  { len: 0.018, color: '#ffffff', width: STROKE, opacity: 1, blur: false },
+  { len: 0.045, color: '#ffc2c4', width: STROKE * STREAK_THICKNESS, opacity: 0.9, blur: false },
+  { len: 0.018, color: '#ffffff', width: STROKE * STREAK_THICKNESS, opacity: 1, blur: false },
 ].map((layer) => ({ ...layer, len: layer.len * ROUTE_SCALE }));
 
 // Head travels from just before the route's start to just past its end, so the

@@ -103,8 +103,8 @@ export function ScoreBadge({
         </div>
       </div>
       <div>
-        <div style={{ fontSize: 11, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: 0.5, fontWeight: 700 }}>{label}</div>
-        <div style={{ fontSize: 13, color: 'var(--text-mid)', marginTop: 2 }}>
+        <div style={{ fontSize: 13, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: 0.5, fontWeight: 700 }}>{label}</div>
+        <div style={{ fontSize: 15, color: 'var(--text-mid)', marginTop: 2 }}>
           {score === 0 ? 'No indicators found' : score < 30 ? 'Low risk signal' : score < 60 ? 'Elevated risk' : 'High risk'}
         </div>
       </div>
@@ -128,13 +128,14 @@ function ScoreColumn({ children }: { children: ReactNode }) {
   );
 }
 
-// A separate container below the main detail card, listing every real
-// source checked — clean or flagged — with the reason when flagged. Never
-// filters out clean sources: seeing "0 of 7 flagged" is as meaningful as
-// seeing which ones tripped.
+// A separate container below the main detail card, listing every vendor
+// checked — clean or flagged — with the reason when flagged. Never filters
+// out clean vendors: seeing "0 of 14 flagged" is as meaningful as seeing
+// which ones tripped. Flagged vendors are listed first.
 export function SecurityChecksCard({ checks }: { checks: SecurityCheck[] | undefined | null }) {
   if (!checks || checks.length === 0) return null;
   const flaggedCount = checks.filter((c) => c.flagged).length;
+  const ordered = [...checks].sort((a, b) => Number(b.flagged) - Number(a.flagged));
 
   return (
     <GlassCard style={{ marginTop: 16 }}>
@@ -147,7 +148,7 @@ export function SecurityChecksCard({ checks }: { checks: SecurityCheck[] | undef
         </div>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 10 }}>
-        {checks.map((c, i) => (
+        {ordered.map((c, i) => (
           <div
             key={i}
             style={{
@@ -215,7 +216,7 @@ function Flag({ active, label }: { active: boolean; label: string }) {
   return (
     <span
       style={{
-        fontSize: 11, fontWeight: 700, padding: '4px 11px', borderRadius: 999,
+        fontSize: 12.5, fontWeight: 700, padding: '5px 12px', borderRadius: 999,
         color: 'var(--risk-medium)', border: '1px solid rgba(249,115,22,0.4)',
         background: 'linear-gradient(155deg, rgba(249,115,22,0.22), rgba(249,115,22,0.06))',
         backdropFilter: 'blur(10px) saturate(160%)',
@@ -247,7 +248,7 @@ function StatusFlag({ active, label, risk = false }: { active: boolean; label: s
     <span
       style={{
         display: 'inline-flex', alignItems: 'center', gap: 6,
-        fontSize: 11, fontWeight: 700, padding: '4px 11px', borderRadius: 999,
+        fontSize: 12.5, fontWeight: 700, padding: '5px 12px', borderRadius: 999,
         color, border: `1px solid ${border}`,
         background: `rgba(${rgb},0.12)`,
       }}
@@ -258,13 +259,19 @@ function StatusFlag({ active, label, risk = false }: { active: boolean; label: s
   );
 }
 
+// Roomier spacing for the main detail cards (IP / URL / file), about 30% taller
+// than the compact layout.
+const DETAIL_CARD_PADDING = '32px 20px';
+const DETAIL_ROW_GAP = 16;
+const FLAGS_ROW = { display: 'flex', gap: 6, marginTop: 16, marginBottom: 28, flexWrap: 'wrap' } as const;
+
 function Field({ icon: Icon, label, value }: { icon: typeof Globe2; label: string; value: ReactNode }) {
   return (
     <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
-      <Icon size={14} color="var(--text-dim)" style={{ marginTop: 2, flexShrink: 0 }} />
+      <Icon size={16} color="var(--text-dim)" style={{ marginTop: 2, flexShrink: 0 }} />
       <div>
-        <div style={{ fontSize: 9.5, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: 0.4 }}>{label}</div>
-        <div style={{ fontSize: 12.5, color: 'var(--text-hi)', fontWeight: 600, wordBreak: 'break-all' }}>{value || '—'}</div>
+        <div style={{ fontSize: 11.5, color: 'var(--text-dim)', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 3 }}>{label}</div>
+        <div style={{ fontSize: 15, color: 'var(--text-hi)', fontWeight: 600, overflowWrap: 'anywhere' }}>{value || '—'}</div>
       </div>
     </div>
   );
@@ -273,12 +280,12 @@ function Field({ icon: Icon, label, value }: { icon: typeof Globe2; label: strin
 export function IpResultCard({ data }: { data: IPLookup }) {
   return (
     <>
-    <GlassCard>
+    <GlassCard style={{ padding: DETAIL_CARD_PADDING }}>
       <div style={{ display: 'flex', gap: 24 }}>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 11, color: 'var(--text-dim)', fontWeight: 600, letterSpacing: 0.5, marginBottom: 6 }}>IP ADDRESS</div>
-          <div style={{ fontSize: 20, fontWeight: 700, fontFamily: 'var(--font-mono)' }}>{data.ip}</div>
-          <div style={{ display: 'flex', gap: 6, marginTop: 10, marginBottom: 18, flexWrap: 'wrap' }}>
+          <div style={{ fontSize: 12.5, color: 'var(--text-dim)', fontWeight: 600, letterSpacing: 0.5, marginBottom: 6 }}>IP ADDRESS</div>
+          <div style={{ fontSize: 24, fontWeight: 700, fontFamily: 'var(--font-mono)' }}>{data.ip}</div>
+          <div style={FLAGS_ROW}>
             <StatusFlag active={data.is_tor} label="TOR" risk />
             <StatusFlag active={data.is_vpn} label="VPN" risk />
             <StatusFlag active={data.is_proxy} label="PROXY" risk />
@@ -286,7 +293,7 @@ export function IpResultCard({ data }: { data: IPLookup }) {
             <StatusFlag active={data.is_mobile} label="MOBILE CARRIER" />
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 14, marginBottom: 16 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', columnGap: 14, rowGap: DETAIL_ROW_GAP, marginBottom: 22 }}>
             <Field icon={Building2} label="ISP" value={data.isp} />
             <Field icon={Server} label="Organization" value={data.org} />
             <Field icon={Hash} label="ASN" value={data.asn} />
@@ -299,7 +306,7 @@ export function IpResultCard({ data }: { data: IPLookup }) {
               value={
                 data.country ? (
                   <>
-                    <span style={{ fontSize: 20, verticalAlign: 'middle', marginRight: 6, lineHeight: 1 }}>
+                    <span style={{ fontSize: 30, lineHeight: '18px', display: 'inline-block', verticalAlign: 'middle', margin: '-6px 8px -4px 0' }}>
                       {countryFlagEmoji(data.country_code)}
                     </span>
                     {data.country}
@@ -312,7 +319,7 @@ export function IpResultCard({ data }: { data: IPLookup }) {
         </div>
 
         <ScoreColumn>
-          <ScoreBadge score={data.malicious_score} label="Malicious Flagging" size={96} stacked />
+          <ScoreBadge score={data.malicious_score} label="Malicious Flagging" size={144} stacked />
         </ScoreColumn>
       </div>
     </GlassCard>
@@ -324,24 +331,24 @@ export function IpResultCard({ data }: { data: IPLookup }) {
 export function UrlResultCard({ data }: { data: UrlLookup }) {
   return (
     <>
-    <GlassCard>
+    <GlassCard style={{ padding: DETAIL_CARD_PADDING }}>
       <div style={{ display: 'flex', gap: 24 }}>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 11, color: 'var(--text-dim)', fontWeight: 600, letterSpacing: 0.5, marginBottom: 6 }}>URL</div>
-          <div style={{ fontSize: 15, fontWeight: 700, fontFamily: 'var(--font-mono)', wordBreak: 'break-all' }}>{data.url}</div>
-          <div style={{ display: 'flex', gap: 6, marginTop: 10, marginBottom: 18, flexWrap: 'wrap' }}>
+          <div style={{ fontSize: 12.5, color: 'var(--text-dim)', fontWeight: 600, letterSpacing: 0.5, marginBottom: 6 }}>URL</div>
+          <div style={{ fontSize: 18, fontWeight: 700, fontFamily: 'var(--font-mono)', wordBreak: 'break-all' }}>{data.url}</div>
+          <div style={FLAGS_ROW}>
             {data.exact_match_verified && <Flag active label="CONFIRMED MALICIOUS (URLhaus)" />}
             {data.threat_type && <Flag active label={data.threat_type.toUpperCase()} />}
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: data.domain_registered_at ? 16 : 0 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', columnGap: 14, rowGap: DETAIL_ROW_GAP, marginBottom: data.domain_registered_at ? DETAIL_ROW_GAP : 0 }}>
             <Field icon={Globe2} label="Domain" value={data.domain} />
             <Field icon={Server} label="Host IP" value={data.host_ip} />
             {data.host_rdap_org && <Field icon={Building2} label="Host IP Network (RDAP)" value={data.host_rdap_org} />}
           </div>
 
           {data.domain_registered_at && (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', columnGap: 14, rowGap: DETAIL_ROW_GAP }}>
               <Field icon={Calendar} label="Domain Registered" value={formatRdapDate(data.domain_registered_at)} />
               <Field icon={Calendar} label="Domain Age" value={domainAge(data.domain_registered_at)} />
               <Field icon={CalendarClock} label="Last Renewed / Updated" value={formatRdapDate(data.domain_last_changed_at)} />
@@ -351,7 +358,7 @@ export function UrlResultCard({ data }: { data: UrlLookup }) {
         </div>
 
         <ScoreColumn>
-          <ScoreBadge score={data.malicious_score} label="Malicious Flagging" size={96} stacked />
+          <ScoreBadge score={data.malicious_score} label="Malicious Flagging" size={144} stacked />
         </ScoreColumn>
       </div>
     </GlassCard>
@@ -364,21 +371,21 @@ export function UrlResultCard({ data }: { data: UrlLookup }) {
 export function FileResultCard({ data }: { data: FileLookup }) {
   return (
     <>
-    <GlassCard>
+    <GlassCard style={{ padding: DETAIL_CARD_PADDING }}>
       <div style={{ display: 'flex', gap: 24 }}>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 11, color: 'var(--text-dim)', fontWeight: 600, letterSpacing: 0.5, marginBottom: 6 }}>FILE</div>
-          <div style={{ fontSize: 18, fontWeight: 700 }}>{data.filename || 'unnamed'}</div>
-          <div style={{ fontSize: 11.5, color: 'var(--text-dim)', marginTop: 4 }}>
+          <div style={{ fontSize: 12.5, color: 'var(--text-dim)', fontWeight: 600, letterSpacing: 0.5, marginBottom: 6 }}>FILE</div>
+          <div style={{ fontSize: 21, fontWeight: 700 }}>{data.filename || 'unnamed'}</div>
+          <div style={{ fontSize: 13.5, color: 'var(--text-dim)', marginTop: 4 }}>
             {data.size_bytes.toLocaleString()} bytes · {data.is_pe ? 'PE executable' : 'non-PE file'}
             {data.submission_count > 1 && ` · seen ${data.submission_count}× before`}
           </div>
-          <div style={{ display: 'flex', gap: 6, marginTop: 10, marginBottom: 18, flexWrap: 'wrap' }}>
+          <div style={FLAGS_ROW}>
             <Flag active={!data.is_signed} label="UNSIGNED" />
             {data.is_signed && (
               <span
                 style={{
-                  fontSize: 11, fontWeight: 700, padding: '4px 11px', borderRadius: 999,
+                  fontSize: 12.5, fontWeight: 700, padding: '5px 12px', borderRadius: 999,
                   color: 'var(--risk-clean)', border: '1px solid rgba(74,222,128,0.4)',
                   background: 'linear-gradient(155deg, rgba(74,222,128,0.22), rgba(74,222,128,0.06))',
                   backdropFilter: 'blur(10px) saturate(160%)',
@@ -398,7 +405,7 @@ export function FileResultCard({ data }: { data: FileLookup }) {
           </div>
 
           {data.is_pe && (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 16 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', columnGap: 14, rowGap: DETAIL_ROW_GAP, marginBottom: 22 }}>
               <Field icon={Building2} label="Company Name" value={data.pe_company_name} />
               <Field icon={FileSignature} label="Product Name" value={data.pe_product_name} />
               <Field icon={Copyright} label="Copyright" value={data.pe_copyright} />
@@ -415,7 +422,7 @@ export function FileResultCard({ data }: { data: FileLookup }) {
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {data.risk_factors.map((f, i) => (
-                  <div key={i} style={{ display: 'flex', gap: 8, fontSize: 12.5, color: 'var(--text-mid)' }}>
+                  <div key={i} style={{ display: 'flex', gap: 8, fontSize: 14.5, color: 'var(--text-mid)' }}>
                     <ShieldAlert size={13} color="var(--risk-medium)" style={{ flexShrink: 0, marginTop: 2 }} />
                     {f}
                   </div>
@@ -425,7 +432,7 @@ export function FileResultCard({ data }: { data: FileLookup }) {
           )}
 
           {!data.is_pe && (
-            <div style={{ display: 'flex', gap: 8, fontSize: 12.5, color: 'var(--text-dim)' }}>
+            <div style={{ display: 'flex', gap: 8, fontSize: 14.5, color: 'var(--text-dim)' }}>
               <EyeOff size={13} style={{ flexShrink: 0, marginTop: 2 }} />
               Not a PE (.exe/.dll) file — signature and copyright metadata unavailable.
             </div>
@@ -433,7 +440,7 @@ export function FileResultCard({ data }: { data: FileLookup }) {
         </div>
 
         <ScoreColumn>
-          <ScoreBadge score={data.risk_score} label="Local Risk Score" size={96} stacked />
+          <ScoreBadge score={data.risk_score} label="Local Risk Score" size={144} stacked />
         </ScoreColumn>
       </div>
     </GlassCard>

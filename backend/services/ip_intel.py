@@ -89,7 +89,7 @@ def lookup_ip(db: Session, ip: str, force_refresh: bool = False) -> models.IPLoo
     row.lists_checked = lists_checked
     row.lists_flagged = lists_flagged
     row.blocklist_hits = block_result["hits"]
-    row.security_checks = build_ip_security_checks(block_result["hits"])
+    row.security_checks = build_ip_security_checks(block_result)
     row.rdap_org = _rdap_org(rdap)
     row.rdap_network = rdap.get("name")
     row.reverse_dns = reverse_dns
@@ -104,11 +104,11 @@ def lookup_ip(db: Session, ip: str, force_refresh: bool = False) -> models.IPLoo
 
 
 def backfill_security_checks(db: Session) -> int:
-    """Catch-up for rows cached before `security_checks` (or is_vpn/blocklist
-    fields added alongside it) existed. Every value here derives from the
-    already-stored IP plus the in-memory blocklists, so it's a pure recompute
-    — no external calls, safe to run on every startup."""
-    rows = db.query(models.IPLookup).filter(models.IPLookup.security_checks.is_(None)).all()
+    """Recomputes every cached row's vendor checks on startup, so cached results
+    pick up vendor-feed changes (new vendors, refreshed lists) straight away
+    instead of after their 24h cache expires. Every value here derives from the
+    stored IP plus the in-memory feeds — no external calls, cheap to run."""
+    rows = db.query(models.IPLookup).all()
     for row in rows:
         block_result = registry.check_ip(row.ip)
         lists_checked = block_result["lists_checked"]
@@ -119,7 +119,7 @@ def backfill_security_checks(db: Session) -> int:
         row.lists_checked = lists_checked
         row.lists_flagged = lists_flagged
         row.blocklist_hits = block_result["hits"]
-        row.security_checks = build_ip_security_checks(block_result["hits"])
+        row.security_checks = build_ip_security_checks(block_result)
     if rows:
         db.commit()
     return len(rows)

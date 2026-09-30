@@ -80,25 +80,21 @@ def _domain_registration_info(hostname: str) -> dict:
 
 
 def _build_url_security_checks(phish: dict, ip_row: "models.IPLookup | None") -> list[dict]:
-    checks = [
-        {
-            "name": "abuse.ch URLhaus (exact URL)",
-            "flagged": phish["exact_match"],
-            "detail": "Confirmed on the live malicious-URL feed" if phish["exact_match"] else "Not present on the live feed",
-        },
-        {
-            "name": "abuse.ch URLhaus (domain)",
-            "flagged": phish["domain_match"],
-            "detail": (
-                f"Domain has hosted {phish.get('threat_type')} payloads"
-                if phish["domain_match"]
-                else "Domain not associated with known malware distribution"
-            ),
-        },
-    ]
+    """URL/domain vendors first, then every vendor checked for the host's IP."""
+    checks = list(phish["checks"])
     if ip_row is not None and ip_row.security_checks:
         checks.extend(ip_row.security_checks)
     return checks
+
+
+def _url_score(phish: dict, host_ip_score: float) -> float:
+    if phish["exact_match"]:
+        return 100.0
+    if phish["domain_match"]:
+        return 80.0
+    # No URL/domain listing — treat elevated underlying-IP reputation as a soft signal,
+    # capped well below a confirmed malicious verdict.
+    return min(host_ip_score, 35.0)
 
 
 def lookup_url(db: Session, url: str, force_refresh: bool = False) -> models.UrlLookup:
@@ -127,14 +123,7 @@ def lookup_url(db: Session, url: str, force_refresh: bool = False) -> models.Url
             host_ip_score = 0.0
             ip_row = None
 
-    if phish["exact_match"]:
-        score = 100.0
-    elif phish["domain_match"]:
-        score = 80.0
-    else:
-        # No phishing-list match — treat elevated underlying-IP reputation as a soft signal,
-        # capped well below a confirmed phishing verdict.
-        score = min(host_ip_score, 35.0)
+    score = _url_score(phish, host_ip_score)
 
     row = existing or models.UrlLookup(url=url)
     row.domain = domain
@@ -162,13 +151,18 @@ def lookup_url(db: Session, url: str, force_refresh: bool = False) -> models.Url
 
 
 def backfill_security_checks(db: Session) -> int:
-    """Catch-up for rows cached before `security_checks` existed — recomputed
-    from the stored url/domain/host_ip plus the in-memory URLhaus feed and the
-    host IP's own (already-backfilled) row, no external calls needed."""
-    rows = db.query(models.UrlLookup).filter(models.UrlLookup.security_checks.is_(None)).all()
+    """Recomputes every cached row's vendor checks and verdict on startup, from the
+    stored url/domain/host_ip plus the in-memory feeds and the host IP's own
+    (already-recomputed) row — no external calls needed."""
+    rows = db.query(models.UrlLookup).all()
     for row in rows:
         phish = registry.check_url(row.url, row.domain)
         ip_row = db.query(models.IPLookup).filter(models.IPLookup.ip == row.host_ip).first() if row.host_ip else None
+        row.host_ip_score = ip_row.malicious_score if ip_row is not None else (row.host_ip_score or 0.0)
+        row.is_malicious = phish["exact_match"] or phish["domain_match"]
+        row.exact_match_verified = phish["exact_match"]
+        row.threat_type = phish.get("threat_type")
+        row.malicious_score = round(_url_score(phish, row.host_ip_score), 1)
         row.security_checks = _build_url_security_checks(phish, ip_row)
     if rows:
         db.commit()
