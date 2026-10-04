@@ -88,6 +88,26 @@ The frontend expects the API at `http://localhost:8200` by default — override 
 `VITE_API_BASE` for a different backend URL, and set `CORS_ALLOWED_ORIGINS` on the backend
 (comma-separated) when deploying so it isn't wide open to any origin.
 
+## Deploying the website (Cloudflare Pages)
+
+The live site is **https://intelreport.in**; its API is **https://api.intelreport.in** (the
+phone backend, through a Cloudflare tunnel). `frontend/.env.production` points production
+builds at that API.
+
+In Cloudflare: **Workers & Pages → Create → Pages → Connect to Git**, pick this repository, and use:
+
+| Setting | Value |
+|---|---|
+| Production branch | `main` |
+| Framework preset | None (or Vite) |
+| Root directory | `frontend` |
+| Build command | `npm run build` |
+| Build output directory | `dist` |
+| Environment variable | `NODE_VERSION` = `22` |
+
+Then add `intelreport.in` under the project's **Custom domains**. Every push to `main`
+redeploys the site.
+
 ## Running the backend on an Android phone (Termux)
 
 The phone acts as the API server; the frontend can stay wherever it's hosted.
