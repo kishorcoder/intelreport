@@ -143,8 +143,18 @@ The phone acts as the API server; the frontend can stay wherever it's hosted.
 6. Point the frontend at the phone: build it with `VITE_API_BASE=<phone or tunnel URL>`, and
    set `CORS_ALLOWED_ORIGINS` in `mobile/.env` to the frontend's origin.
 
-After a reboot, Termux:Boot starts the API automatically, plus the tunnel when a
-`CLOUDFLARE_TUNNEL_TOKEN` is set. Logs go to `~/intel-backend.log` and `~/intel-tunnel.log`.
+### Keeping it running
+
+`./mobile/keepalive.sh` runs the API and the tunnel in the background and restarts either one
+whenever it exits (crash, network drop, Android killing it). It also restarts the API if it stops
+answering health checks for three minutes, and holds a Termux wake lock so the screen can be off.
+Stop everything with `./mobile/stop.sh`. `bash mobile/install-boot.sh` makes Termux:Boot start
+`keepalive.sh` on every boot. Logs: `~/intel-backend.log`, `~/intel-tunnel.log` and
+`~/intel-keepalive.log`.
+
+Android still decides what runs in the background, so also set Termux's battery usage to
+**Unrestricted**, allow it to **autostart** (Xiaomi, Oppo, Vivo, Realme, Samsung), keep mobile
+data allowed in the background, and keep the phone charging.
 
 The phone install uses `requirements-mobile.txt`: plain `uvicorn` instead of
 `uvicorn[standard]`, plus Termux's prebuilt `cryptography`. If `cryptography` is missing, file
