@@ -1,3 +1,4 @@
+import logging
 import socket
 from datetime import datetime, timezone
 
@@ -14,12 +15,22 @@ IP_API_FIELDS = (
 )
 IP_CACHE_MAX_AGE_HOURS = 24
 
+logger = logging.getLogger("intel")
+
 
 def _fetch_ip_api(ip: str) -> dict:
+    """Geolocation is a nice-to-have: if ip-api.com is slow, down, or rate-limiting us
+    (45 requests/min, shared by every visitor since all lookups come from this server),
+    return {} so the lookup still succeeds with its vendor checks instead of failing."""
     url = f"http://ip-api.com/json/{ip}?fields={IP_API_FIELDS}"
-    resp = httpx.get(url, timeout=10)
-    resp.raise_for_status()
-    return resp.json()
+    try:
+        resp = httpx.get(url, timeout=10)
+        resp.raise_for_status()
+        data = resp.json()
+    except (httpx.HTTPError, ValueError) as e:
+        logger.warning("ip-api lookup failed for %s: %s", ip, e)
+        return {}
+    return data if data.get("status") == "success" else {}
 
 
 def _fetch_rdap(ip: str) -> dict:
@@ -59,7 +70,9 @@ def lookup_ip(db: Session, ip: str, force_refresh: bool = False) -> models.IPLoo
     existing = db.query(models.IPLookup).filter(models.IPLookup.ip == ip).first()
     if existing and not force_refresh:
         age_hours = (datetime.now(timezone.utc) - existing.fetched_at.replace(tzinfo=timezone.utc)).total_seconds() / 3600
-        if age_hours < IP_CACHE_MAX_AGE_HOURS:
+        # A row saved while geolocation was unavailable is refetched rather than served
+        # from cache for a whole day with its location missing.
+        if age_hours < IP_CACHE_MAX_AGE_HOURS and existing.country:
             return existing
 
     geo = _fetch_ip_api(ip)
@@ -72,19 +85,21 @@ def lookup_ip(db: Session, ip: str, force_refresh: bool = False) -> models.IPLoo
     score = round((lists_flagged / lists_checked) * 100, 1) if lists_checked else 0.0
 
     row = existing or models.IPLookup(ip=ip)
-    row.isp = geo.get("isp")
-    row.org = geo.get("org")
-    row.asn = geo.get("as")
-    row.country = geo.get("country")
-    row.country_code = geo.get("countryCode")
-    row.city = geo.get("city")
-    row.region = geo.get("regionName")
-    row.timezone = geo.get("timezone")
-    row.is_proxy = bool(geo.get("proxy")) or block_result["is_anon_proxy"]
+    if geo:  # on a geolocation outage, keep whatever an earlier lookup stored
+        row.isp = geo.get("isp")
+        row.org = geo.get("org")
+        row.asn = geo.get("as")
+        row.country = geo.get("country")
+        row.country_code = geo.get("countryCode")
+        row.city = geo.get("city")
+        row.region = geo.get("regionName")
+        row.timezone = geo.get("timezone")
+        row.is_hosting = bool(geo.get("hosting"))
+        row.is_mobile = bool(geo.get("mobile"))
+    geo_proxy = bool(geo.get("proxy")) if geo else bool(existing and existing.is_proxy)
+    row.is_proxy = geo_proxy or block_result["is_anon_proxy"]
     row.is_vpn = block_result["is_vpn"]
-    row.is_hosting = bool(geo.get("hosting"))
     row.is_tor = block_result["is_tor"]
-    row.is_mobile = bool(geo.get("mobile"))
     row.malicious_score = score
     row.lists_checked = lists_checked
     row.lists_flagged = lists_flagged
@@ -93,7 +108,8 @@ def lookup_ip(db: Session, ip: str, force_refresh: bool = False) -> models.IPLoo
     row.rdap_org = _rdap_org(rdap)
     row.rdap_network = rdap.get("name")
     row.reverse_dns = reverse_dns
-    row.raw_source_json = {"ip_api": geo}
+    if geo:
+        row.raw_source_json = {"ip_api": geo}
     row.fetched_at = datetime.now(timezone.utc)
 
     if not existing:

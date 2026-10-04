@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, Upload, History, Loader2, RefreshCw } from 'lucide-react';
-import { lookupIp, lookupUrl, lookupHash, uploadFile } from '../lib/api';
+import { describeError, lookupIp, lookupUrl, lookupHash, uploadFile } from '../lib/api';
 import type { FileLookup, HashLookupResult, IPLookup, UrlLookup } from '../lib/types';
 import { GlassCard } from '../components/GlassCard';
 import { IpResultCard, UrlResultCard, FileResultCard } from '../components/ResultCard';
@@ -78,8 +78,8 @@ export function Lookup() {
         const data = await lookupUrl(trimmed, forceRefresh);
         applyResult({ kind: 'url', data });
       }
-    } catch {
-      setError('Lookup failed — the backend may be unreachable, or an upstream source timed out.');
+    } catch (e) {
+      setError(describeError(e));
     } finally {
       setLoading(false);
     }
@@ -111,8 +111,8 @@ export function Lookup() {
     try {
       const data = await uploadFile(file);
       applyResult({ kind: 'file', data });
-    } catch {
-      setError('File upload/analysis failed.');
+    } catch (e) {
+      setError(describeError(e));
     } finally {
       setLoading(false);
     }
