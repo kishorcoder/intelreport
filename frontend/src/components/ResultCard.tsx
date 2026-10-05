@@ -287,12 +287,18 @@ export function IpResultCard({ data }: { data: IPLookup }) {
           <div style={{ fontSize: 12.5, color: 'var(--text-dim)', fontWeight: 600, letterSpacing: 0.5, marginBottom: 6 }}>IP ADDRESS</div>
           <div style={{ fontSize: 24, fontWeight: 700, fontFamily: 'var(--font-mono)' }}>{data.ip}</div>
           <div style={FLAGS_ROW}>
-            <StatusFlag active={data.is_tor} label="TOR" risk />
-            <StatusFlag active={data.is_vpn} label="VPN" risk />
-            <StatusFlag active={data.is_proxy} label="PROXY" risk />
-            <StatusFlag active={data.is_hosting} label="HOSTING / DATACENTER" />
-            <StatusFlag active={data.is_mobile} label="MOBILE CARRIER" />
-            {data.is_private && <Flag active label="PRIVATE IP" />}
+            {data.is_private ? (
+              // Tor / VPN / proxy / hosting / mobile only describe public networks
+              <Flag active label="PRIVATE IP" />
+            ) : (
+              <>
+                <StatusFlag active={data.is_tor} label="TOR" risk />
+                <StatusFlag active={data.is_vpn} label="VPN" risk />
+                <StatusFlag active={data.is_proxy} label="PROXY" risk />
+                <StatusFlag active={data.is_hosting} label="HOSTING / DATACENTER" />
+                <StatusFlag active={data.is_mobile} label="MOBILE CARRIER" />
+              </>
+            )}
           </div>
 
           {data.is_private && (
