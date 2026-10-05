@@ -20,6 +20,10 @@ export interface IPLookup {
   is_hosting: boolean;
   is_tor: boolean;
   is_mobile: boolean;
+  /** Not routed on the public internet: RFC 1918 private, loopback, CGNAT, … */
+  is_private: boolean | null;
+  address_type: string | null;
+  address_range: string | null;
   malicious_score: number;
   lists_checked: number;
   lists_flagged: number;

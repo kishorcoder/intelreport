@@ -1,3 +1,4 @@
+import ipaddress
 import logging
 import socket
 from datetime import datetime, timezone
@@ -16,6 +17,48 @@ IP_API_FIELDS = (
 IP_CACHE_MAX_AGE_HOURS = 24
 
 logger = logging.getLogger("intel")
+
+# Special-purpose ranges (IANA registries), most specific first. Anything matching one of
+# these isn't reachable on the public internet, so it has no public owner, location or
+# reputation and the external lookups are skipped.
+_SPECIAL_RANGES = [
+    (ipaddress.ip_network(net), label)
+    for net, label in [
+        ("10.0.0.0/8", "Private network (RFC 1918)"),
+        ("172.16.0.0/12", "Private network (RFC 1918)"),
+        ("192.168.0.0/16", "Private network (RFC 1918)"),
+        ("100.64.0.0/10", "Carrier-grade NAT (ISP shared space)"),
+        ("127.0.0.0/8", "Loopback (this device)"),
+        ("169.254.0.0/16", "Link-local (no DHCP address)"),
+        ("0.0.0.0/8", "Unspecified / this network"),
+        ("192.0.2.0/24", "Documentation (TEST-NET-1)"),
+        ("198.51.100.0/24", "Documentation (TEST-NET-2)"),
+        ("203.0.113.0/24", "Documentation (TEST-NET-3)"),
+        ("198.18.0.0/15", "Benchmarking (RFC 2544)"),
+        ("255.255.255.255/32", "Broadcast"),
+        ("224.0.0.0/4", "Multicast"),
+        ("240.0.0.0/4", "Reserved"),
+        ("::1/128", "Loopback (this device)"),
+        ("::/128", "Unspecified"),
+        ("fe80::/10", "Link-local"),
+        ("fc00::/7", "Private network (unique local)"),
+        ("2001:db8::/32", "Documentation"),
+        ("ff00::/8", "Multicast"),
+    ]
+]
+
+
+def classify_address(ip: str) -> dict:
+    """Public or special-purpose, with a readable type and the range it falls in."""
+    addr = ipaddress.ip_address(ip)
+    if addr.version == 6 and addr.ipv4_mapped:  # ::ffff:192.168.1.1 is really 192.168.1.1
+        addr = addr.ipv4_mapped
+    for net, label in _SPECIAL_RANGES:
+        if addr.version == net.version and addr in net:
+            return {"is_private": True, "address_type": label, "address_range": str(net)}
+    if not addr.is_global:
+        return {"is_private": True, "address_type": "Special-purpose (not routed on the internet)", "address_range": None}
+    return {"is_private": False, "address_type": "Public", "address_range": None}
 
 
 def _fetch_ip_api(ip: str) -> dict:
@@ -72,12 +115,18 @@ def lookup_ip(db: Session, ip: str, force_refresh: bool = False) -> models.IPLoo
         age_hours = (datetime.now(timezone.utc) - existing.fetched_at.replace(tzinfo=timezone.utc)).total_seconds() / 3600
         # A row saved while geolocation was unavailable is refetched rather than served
         # from cache for a whole day with its location missing.
-        if age_hours < IP_CACHE_MAX_AGE_HOURS and existing.country:
+        if age_hours < IP_CACHE_MAX_AGE_HOURS and (existing.country or existing.is_private):
             return existing
 
-    geo = _fetch_ip_api(ip)
-    rdap = _fetch_rdap(ip)
-    reverse_dns = _reverse_dns(ip)
+    kind = classify_address(ip)
+    if kind["is_private"]:
+        # ip-api, RDAP and reverse DNS have nothing to say about a private address
+        # (ip-api answers "private range"), so don't spend their rate limits on it.
+        geo, rdap, reverse_dns = {}, {}, None
+    else:
+        geo = _fetch_ip_api(ip)
+        rdap = _fetch_rdap(ip)
+        reverse_dns = _reverse_dns(ip)
     block_result = registry.check_ip(ip)
 
     lists_checked = block_result["lists_checked"]
@@ -100,6 +149,9 @@ def lookup_ip(db: Session, ip: str, force_refresh: bool = False) -> models.IPLoo
     row.is_proxy = geo_proxy or block_result["is_anon_proxy"]
     row.is_vpn = block_result["is_vpn"]
     row.is_tor = block_result["is_tor"]
+    row.is_private = kind["is_private"]
+    row.address_type = kind["address_type"]
+    row.address_range = kind["address_range"]
     row.malicious_score = score
     row.lists_checked = lists_checked
     row.lists_flagged = lists_flagged
@@ -136,6 +188,10 @@ def backfill_security_checks(db: Session) -> int:
         row.lists_flagged = lists_flagged
         row.blocklist_hits = block_result["hits"]
         row.security_checks = build_ip_security_checks(block_result)
+        kind = classify_address(row.ip)
+        row.is_private = kind["is_private"]
+        row.address_type = kind["address_type"]
+        row.address_range = kind["address_range"]
     if rows:
         db.commit()
     return len(rows)

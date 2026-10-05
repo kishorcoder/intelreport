@@ -20,6 +20,10 @@ class IPLookup(Base):
     is_hosting = Column(Boolean, default=False)
     is_tor = Column(Boolean, default=False)
     is_mobile = Column(Boolean, default=False)
+    # Not routed on the public internet (RFC 1918 private, loopback, CGNAT, …)
+    is_private = Column(Boolean, default=False)
+    address_type = Column(String, nullable=True)  # e.g. "Private network (RFC 1918)"
+    address_range = Column(String, nullable=True)  # e.g. "192.168.0.0/16"
     malicious_score = Column(Float, default=0.0)
     lists_checked = Column(Integer, default=0)
     lists_flagged = Column(Integer, default=0)

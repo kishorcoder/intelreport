@@ -1,6 +1,7 @@
 import {
   Globe2, ShieldAlert, EyeOff, Server, MapPin, Building2, Hash, FileSignature, Copyright,
   Calendar, CalendarClock, CalendarX2, ShieldCheck, ShieldX, ChevronDown,
+  Info, Network,
 } from 'lucide-react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { FileLookup, IPLookup, SecurityCheck, UrlLookup } from '../lib/types';
@@ -291,7 +292,27 @@ export function IpResultCard({ data }: { data: IPLookup }) {
             <StatusFlag active={data.is_proxy} label="PROXY" risk />
             <StatusFlag active={data.is_hosting} label="HOSTING / DATACENTER" />
             <StatusFlag active={data.is_mobile} label="MOBILE CARRIER" />
+            {data.is_private && <Flag active label="PRIVATE IP" />}
           </div>
+
+          {data.is_private && (
+            <div
+              style={{
+                display: 'flex', gap: 10, alignItems: 'flex-start', marginTop: -8, marginBottom: 26,
+                padding: '12px 14px', borderRadius: 12, fontSize: 14, lineHeight: 1.55,
+                color: 'var(--text-mid)', background: 'rgba(56,189,248,0.08)', border: '1px solid rgba(56,189,248,0.3)',
+              }}
+            >
+              <Info size={18} color="var(--accent-b)" style={{ flexShrink: 0, marginTop: 1 }} />
+              <span>
+                <strong style={{ color: 'var(--text-hi)' }}>{data.address_type}</strong>
+                {data.address_range && <> · <span style={{ fontFamily: 'var(--font-mono)' }}>{data.address_range}</span></>}
+                <br />
+                This address is only used inside local networks and isn't reachable on the internet, so it has no
+                public owner, location or threat reputation. Those fields stay empty and vendors can't list it.
+              </span>
+            </div>
+          )}
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', columnGap: 14, rowGap: DETAIL_ROW_GAP, marginBottom: 22 }}>
             <Field icon={Building2} label="ISP" value={data.isp} />
@@ -315,6 +336,11 @@ export function IpResultCard({ data }: { data: IPLookup }) {
               }
             />
             <Field icon={MapPin} label="City" value={[data.city, data.region].filter(Boolean).join(', ')} />
+            <Field
+              icon={Network}
+              label="Address Type"
+              value={data.address_type ? `${data.address_type}${data.address_range ? ` · ${data.address_range}` : ''}` : null}
+            />
           </div>
         </div>
 
