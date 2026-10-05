@@ -315,7 +315,7 @@ export function IpResultCard({ data }: { data: IPLookup }) {
                 {data.address_range && <> · <span style={{ fontFamily: 'var(--font-mono)' }}>{data.address_range}</span></>}
                 <br />
                 This address is only used inside local networks and isn't reachable on the internet, so it has no
-                public owner, location or threat reputation. Those fields stay empty and vendors can't list it.
+                public owner, location or threat reputation.
               </span>
             </div>
           )}
